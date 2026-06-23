@@ -15,10 +15,13 @@ class MasterDataService
 {
     // ─── OPD ─────────────────────────────────────────────────────────────────
 
-    public function getAllOpd(bool $activeOnly = true): Collection
+    public function getAllOpd(bool $activeOnly = true, bool $withCounts = false): Collection
     {
-        return Cache::remember("opd.all.active:{$activeOnly}", 3600, function () use ($activeOnly) {
+        return Cache::remember("opd.all.active:{$activeOnly}.counts:{$withCounts}", 3600, function () use ($activeOnly, $withCounts) {
             $query = Opd::query();
+            if ($withCounts) {
+                $query->withCount('kamusPokir');
+            }
             if ($activeOnly) {
                 $query->where('is_active', true);
             }
@@ -161,6 +164,14 @@ class MasterDataService
         }
         $opd->delete();
         Cache::flush();
+    }
+
+    public function toggleOpdActive(int $id): Opd
+    {
+        $opd = $this->findOpd($id);
+        $opd->update(['is_active' => !$opd->is_active]);
+        Cache::flush();
+        return $opd;
     }
 
     public function createDapil(array $data): Dapil

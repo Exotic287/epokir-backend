@@ -18,7 +18,8 @@ class OpdController extends Controller
     {
         try {
             $activeOnly = filter_var($request->query('active_only', true), FILTER_VALIDATE_BOOLEAN);
-            $data = $this->masterDataService->getAllOpd($activeOnly);
+            $withCounts = filter_var($request->query('with_counts', false), FILTER_VALIDATE_BOOLEAN);
+            $data = $this->masterDataService->getAllOpd($activeOnly, $withCounts);
             return ApiResponse::success($data, 'Daftar OPD berhasil dimuat.');
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
@@ -60,6 +61,16 @@ class OpdController extends Controller
         try {
             $this->masterDataService->deleteOpd($id);
             return ApiResponse::success(null, 'OPD berhasil dihapus.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function toggleActive(int $id): JsonResponse
+    {
+        try {
+            $opd = $this->masterDataService->toggleOpdActive($id);
+            return ApiResponse::success($opd, 'Status OPD berhasil diubah.');
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
         }
