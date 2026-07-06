@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AspirasiAttachmentController;
 use App\Http\Controllers\Api\AspirasiController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DapilController;
@@ -20,6 +21,10 @@ Route::prefix('v1')->group(function () {
     // Route::get('/auth/sso/callback', [AuthController::class, 'ssoCallback']);
     Route::post('/auth/sso/callback', [AuthController::class, 'ssoCallback']);
 
+    // Public — sama level exposure-nya dengan URL storage statis (nama file ter-hash),
+    // dibuat public karena dimuat lewat <iframe>/fetch tanpa header Authorization
+    Route::get('/aspirasi/{id}/attachments/{attachmentId}/view', [AspirasiAttachmentController::class, 'view']);
+
     // Authenticated API endpoints
     Route::middleware('auth:api')->group(function () {
         // Authenticated Auth endpoints
@@ -34,7 +39,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/opds/{opd}', [OpdController::class, 'show']);
         Route::apiResource('kecamatans', KecamatanController::class);
         Route::apiResource('desas', DesaController::class);
+        Route::get('/kamus-pokir/categories', [KamusPokirController::class, 'categories']);
+        Route::patch('/kamus-pokir/{id}/toggle-active', [KamusPokirController::class, 'toggleActive']);
         Route::apiResource('kamus-pokir', KamusPokirController::class);
+        // Kamus Usulan: baca bebas untuk semua role (dipakai Dewan saat menyusun Aspirasi),
+        // tulis dibatasi admin.only di bawah
+        Route::get('/kamus-usulan', [KamusUsulanController::class, 'index']);
+        Route::get('/kamus-usulan/for-pokir', [KamusUsulanController::class, 'forPokir']);
+        Route::get('/bidang-urusan', [KamusUsulanController::class, 'bidangUrusan']);
 
         // Periode & Freeze — lihat/edit/freeze oleh Admin & Setwan, buat/nonaktifkan khusus Admin
         Route::middleware('manager.only')->group(function () {
@@ -65,36 +77,31 @@ Route::prefix('v1')->group(function () {
             Route::post('/periode', [PeriodeController::class, 'store']);
             Route::patch('/periode/{id}/deactivate', [PeriodeController::class, 'deactivate']);
 
-            // Kamus Usulan — referensi nomenklatur SIPD, khusus Admin
-            Route::get('/kamus-usulan', [KamusUsulanController::class, 'index']);
+            // Kamus Usulan — operasi tulis dibatasi Admin saja
             Route::post('/kamus-usulan', [KamusUsulanController::class, 'store']);
             Route::put('/kamus-usulan/{id}', [KamusUsulanController::class, 'update']);
             Route::patch('/kamus-usulan/{id}/status', [KamusUsulanController::class, 'toggleStatus']);
-            Route::get('/bidang-urusan', [KamusUsulanController::class, 'bidangUrusan']);
         });
 
         // Transactional: Aspirasi
+        Route::post('/aspirasi/bulk-arsip', [AspirasiController::class, 'bulkArchive']);
+        Route::get('/aspirasi/tab-counts', [AspirasiController::class, 'tabCounts']);
+        Route::get('/aspirasi/available', [AspirasiController::class, 'available']);
         Route::apiResource('aspirasi', AspirasiController::class);
+        Route::post('/aspirasi/{id}/attachments', [AspirasiAttachmentController::class, 'store']);
+        Route::delete('/aspirasi/{id}/attachments/{attachmentId}', [AspirasiAttachmentController::class, 'destroy']);
 
         // Transactional: Pokir Custom Workflows
         Route::post('/pokir/{id}/submit', [PokirController::class, 'submit']);
+        Route::post('/pokir/{id}/resubmit', [PokirController::class, 'submit']);  // alias: revision_needed → submitted
         Route::post('/pokir/{id}/verify', [PokirController::class, 'verify']);
-        Route::post('/pokir/{id}/request-revision', [
-            PokirController::class,
-            'requestRevision',
-        ]);
-        Route::post('/pokir/{id}/finalize', [
-            PokirController::class,
-            'finalize',
-        ]);
-        Route::post('/pokir/{id}/aspirasi', [
-            PokirController::class,
-            'addAspirasi',
-        ]);
-        Route::delete('/pokir/{id}/aspirasi/{aspirasiId}', [
-            PokirController::class,
-            'removeAspirasi',
-        ]);
+        Route::post('/pokir/{id}/request-revision', [PokirController::class, 'requestRevision']);
+        Route::post('/pokir/{id}/finalize', [PokirController::class, 'finalize']);
+        Route::post('/pokir/{id}/cancel', [PokirController::class, 'cancel']);
+        Route::post('/pokir/{id}/export', [PokirController::class, 'export']);
+        Route::get('/pokir/{id}/activities', [PokirController::class, 'activities']);
+        Route::post('/pokir/{id}/aspirasi', [PokirController::class, 'addAspirasi']);
+        Route::delete('/pokir/{id}/aspirasi/{aspirasiId}', [PokirController::class, 'removeAspirasi']);
 
         // Transactional: Pokir Resource
         Route::apiResource('pokir', PokirController::class);
