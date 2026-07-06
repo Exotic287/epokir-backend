@@ -23,12 +23,11 @@ class StoreKamusPokirRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kamus_version' => 'required|string',
-            'level' => 'required|integer',
-            'parent_id' => 'nullable|exists:kamus_pokirs,id',
-            'opd_id' => 'required|exists:opds,id',
-            'program_sipd_id' => 'required|exists:program_sipds,id',
-            'is_active' => 'boolean',
+            'kamus_version'    => 'required|string|max:50',
+            'name'             => 'required|string|max:500',
+            'bidang_urusan_id' => 'nullable|exists:bidang_urusans,id',
+            'opd_id'           => 'nullable|exists:opds,id',
+            'is_active'        => 'boolean',
         ];
     }
 }

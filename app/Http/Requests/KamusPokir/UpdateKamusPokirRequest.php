@@ -23,12 +23,11 @@ class UpdateKamusPokirRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kamus_version' => 'sometimes|string|max:255',
-            'level' => 'sometimes|integer',
-            'parent_id' => 'nullable|exists:kamus_pokirs,id',
-            'opd_id' => 'sometimes|exists:opds,id',
-            'program_sipd_id' => 'sometimes|exists:program_sipds,id',
-            'is_active' => 'sometimes|boolean',
+            'kamus_version'    => 'sometimes|string|max:50',
+            'name'             => 'sometimes|string|max:500',
+            'bidang_urusan_id' => 'nullable|exists:bidang_urusans,id',
+            'opd_id'           => 'nullable|exists:opds,id',
+            'is_active'        => 'sometimes|boolean',
         ];
     }
 }
