@@ -20,7 +20,8 @@ class AspirasiController extends Controller
     {
         try {
             $data = $this->aspirasiService->index($request->user(), $request->only([
-                'opd_id', 'dapil_id', 'source', 'is_complete', 'search', 'tahun', 'per_page',
+                'opd_id', 'dapil_id', 'source', 'is_complete', 'is_used_in_pokir', 'status',
+                'kecamatan', 'desa', 'urusan', 'created_by', 'search', 'tahun', 'per_page',
             ]));
             return ApiResponse::success($data, 'Daftar aspirasi berhasil dimuat.');
         } catch (\Exception $e) {
@@ -63,6 +64,46 @@ class AspirasiController extends Controller
         try {
             $this->aspirasiService->destroy($request->user(), $id);
             return ApiResponse::success(null, 'Aspirasi berhasil dihapus.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    /**
+     * GET /api/v1/aspirasi/available
+     * Aspirasi yang belum digunakan di Pokir manapun (untuk dipilih saat menyusun Pokir baru).
+     */
+    public function available(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->aspirasiService->available($request->user(), $request->only(['q', 'urusan']));
+            return ApiResponse::success($data, 'Aspirasi tersedia berhasil dimuat.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function tabCounts(Request $request): JsonResponse
+    {
+        try {
+            // Tanpa wrapper ApiResponse — kontraknya AspirasiTabCounts mentah (lihat aspirasi.service.ts)
+            $counts = $this->aspirasiService->tabCounts($request->user(), $request->only(['created_by', 'tahun']));
+            return response()->json($counts);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function bulkArchive(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids'   => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        try {
+            $count = $this->aspirasiService->bulkArchive($request->user(), $request->input('ids'));
+            return ApiResponse::success(['count' => $count], "{$count} aspirasi berhasil dipindahkan ke arsip kerja.");
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
         }
