@@ -51,6 +51,28 @@ class KamusUsulanService
         ];
     }
 
+    /**
+     * Daftar KamusUsulan aktif sebagai flat list untuk picker Pokir.
+     */
+    public function getForPokir(): array
+    {
+        return KamusUsulan::with('bidangUrusan')
+            ->where('status', 'active')
+            ->orderBy('bidang_urusan_id')
+            ->orderBy('uraian_permasalahan')
+            ->get()
+            ->map(fn (KamusUsulan $k) => [
+                'id'             => (string) $k->id,
+                'name'           => $k->uraian_permasalahan,
+                'bidang_id'      => (string) $k->bidang_urusan_id,
+                'bidang_name'    => $k->bidangUrusan->nama ?? '',
+                'opd_id'         => null,
+                'opd_name'       => $k->opd_tujuan,
+                'program_sipd'   => $k->program,
+                'supporting_opds'=> [],
+            ])->all();
+    }
+
     public function getBidangUrusanList(): array
     {
         return BidangUrusan::withCount('kamusUsulan as jumlah_item')

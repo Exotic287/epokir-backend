@@ -34,6 +34,20 @@ class KamusUsulanController extends Controller
         }
     }
 
+    /**
+     * GET /api/v1/kamus-usulan/for-pokir
+     * Flat list aktif untuk picker kategori Pokir.
+     */
+    public function forPokir(): JsonResponse
+    {
+        try {
+            $data = $this->service->getForPokir();
+            return ApiResponse::success($data, 'Daftar kategori Pokir berhasil dimuat.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
     public function bidangUrusan(): JsonResponse
     {
         try {
