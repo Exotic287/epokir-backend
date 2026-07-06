@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'number', 'title', 'kamus_pokir_id', 'opd_id', 'dapil_id', 'status', 'submitted_by', 'verified_by', 'finalized_by', 'kecamatan_ids', 'desa_ids', 'notes'])]
+#[Fillable(['user_id', 'number', 'title', 'kamus_pokir_id', 'opd_id', 'dapil_id', 'status', 'submitted_by', 'verified_by', 'finalized_by', 'kecamatan_ids', 'desa_ids', 'notes', 'volume', 'satuan', 'satuan_custom'])]
 class Pokir extends Model
 {
     use SoftDeletes;
@@ -18,7 +18,8 @@ class Pokir extends Model
     {
         return [
             'kecamatan_ids' => 'array',
-            'desa_ids' => 'array',
+            'desa_ids'      => 'array',
+            'volume'        => 'decimal:2',
         ];
     }
 

@@ -54,15 +54,28 @@ class PokirService
             throw new \Exception('Hanya anggota dewan yang dapat membuat Pokir.', 403);
         }
 
+        $aspirasi_ids = $data['aspirasi_ids'] ?? [];
+        unset($data['aspirasi_ids']);
+
         $data['user_id'] = $user->id;
         $data['status']  = 'draft';
         $data['number']  = $this->generateNumber();
+
+        // Auto-assign dapil_id dari user Dewan
+        if (empty($data['dapil_id']) && $user->isDewan() && $user->dapil_id) {
+            $data['dapil_id'] = $user->dapil_id;
+        }
 
         $pokir = Pokir::create($data);
 
         $this->logActivity($pokir, $user, 'created');
 
-        return $pokir->load(['user', 'kamusPokir', 'opd', 'dapil']);
+        // Lampirkan aspirasi yang dikirim bersama pembuatan
+        foreach ($aspirasi_ids as $idx => $aspirasiId) {
+            $this->addAspirasi($user, $pokir->id, (int) $aspirasiId, $idx);
+        }
+
+        return $pokir->load(['user', 'kamusPokir.bidangUrusan', 'opd', 'dapil', 'aspirasi.kecamatan', 'aspirasi.desa', 'activities.user']);
     }
 
     /**
@@ -71,9 +84,9 @@ class PokirService
     public function show(User $user, int $id): Pokir
     {
         $pokir = Pokir::with([
-            'user', 'kamusPokir.opd', 'opd', 'dapil',
+            'user', 'kamusPokir.bidangUrusan', 'opd', 'dapil',
             'submittedBy', 'verifiedBy', 'finalizedBy',
-            'aspirasi.desa', 'aspirasi.kecamatan',
+            'aspirasi.desa', 'aspirasi.kecamatan', 'aspirasi.dapil', 'aspirasi.kamusUsulan.bidangUrusan',
             'activities.user',
             'revisionsFlagged.flaggedBy',
             'attachments',
@@ -101,7 +114,10 @@ class PokirService
             throw new \Exception('Pokir tidak dapat diubah pada status saat ini.', 422);
         }
 
-        $trackableFields = ['title', 'kamus_pokir_id', 'opd_id', 'dapil_id', 'kecamatan_ids', 'desa_ids', 'notes'];
+        $aspirasi_ids = $data['aspirasi_ids'] ?? null;
+        unset($data['aspirasi_ids']);
+
+        $trackableFields = ['title', 'kamus_pokir_id', 'opd_id', 'dapil_id', 'kecamatan_ids', 'desa_ids', 'notes', 'volume', 'satuan', 'satuan_custom'];
         $changes         = [];
 
         foreach ($trackableFields as $field) {
@@ -117,7 +133,19 @@ class PokirService
             $this->logRevisions($pokir, $activity, $user, $changes);
         }
 
-        return $pokir->load(['user', 'kamusPokir', 'opd', 'dapil']);
+        // Sync aspirasi jika dikirim: detach semua → attach ulang sesuai urutan baru
+        if ($aspirasi_ids !== null) {
+            $oldIds = $pokir->aspirasi()->pluck('aspirasis.id')->all();
+            $pokir->aspirasi()->detach();
+            if (!empty($oldIds)) {
+                Aspirasi::whereIn('id', $oldIds)->update(['is_used_in_pokir' => false]);
+            }
+            foreach ($aspirasi_ids as $idx => $aspirasiId) {
+                $this->addAspirasi($user, $pokir->id, (int) $aspirasiId, $idx);
+            }
+        }
+
+        return $pokir->load(['user', 'kamusPokir.bidangUrusan', 'opd', 'dapil', 'aspirasi.kecamatan', 'aspirasi.desa', 'activities.user']);
     }
 
     /**
@@ -247,6 +275,59 @@ class PokirService
         $this->logActivity($pokir, $user, 'finalized');
 
         return $pokir->load(['user', 'opd', 'dapil']);
+    }
+
+    /**
+     * Batalkan Pokir — hanya dari draft/submitted/revision_needed (Dewan sendiri).
+     */
+    public function cancel(User $user, int $id, ?string $notes = null): Pokir
+    {
+        $pokir = $this->show($user, $id);
+
+        $cancellable = ['draft', 'submitted', 'revision_needed'];
+        if (!in_array($pokir->status, $cancellable)) {
+            throw new \Exception('Pokir hanya dapat dibatalkan saat berstatus Draft, Menunggu Pemeriksaan, atau Perlu Perbaikan.', 422);
+        }
+
+        $pokir->update(['status' => 'cancelled']);
+
+        $this->logActivity($pokir, $user, 'cancelled', $notes ? ['notes' => $notes] : null);
+
+        return $pokir->load(['user', 'opd', 'dapil']);
+    }
+
+    /**
+     * Ekspor Pokir ke SIPD — hanya dari finalized (Setwan/Admin).
+     */
+    public function export(User $user, int $id): Pokir
+    {
+        if (!$user->isSetwan() && !$user->isAdmin() && !$user->isDewan()) {
+            throw new \Exception('Tidak memiliki izin untuk mengekspor Pokir.', 403);
+        }
+
+        $pokir = Pokir::find($id);
+        if (!$pokir) {
+            throw new \Exception('Pokir tidak ditemukan.', 404);
+        }
+
+        if ($pokir->status !== 'finalized') {
+            throw new \Exception('Hanya Pokir berstatus Finalized yang dapat diekspor.', 422);
+        }
+
+        $pokir->update(['status' => 'exported']);
+
+        $this->logActivity($pokir, $user, 'exported_sipd');
+
+        return $pokir->load(['user', 'opd', 'dapil']);
+    }
+
+    /**
+     * Riwayat aktivitas Pokir.
+     */
+    public function activities(User $user, int $id): array
+    {
+        $pokir = $this->show($user, $id);
+        return $pokir->activities()->with('user')->latest()->get()->toArray();
     }
 
     /**

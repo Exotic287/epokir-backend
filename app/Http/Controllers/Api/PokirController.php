@@ -155,4 +155,43 @@ class PokirController extends Controller
             return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
         }
     }
+
+    /**
+     * POST /api/v1/pokir/{id}/cancel
+     */
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        try {
+            $pokir = $this->pokirService->cancel($request->user(), $id, $request->input('notes'));
+            return ApiResponse::success($pokir, 'Pokir berhasil dibatalkan.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    /**
+     * POST /api/v1/pokir/{id}/export
+     */
+    public function export(Request $request, int $id): JsonResponse
+    {
+        try {
+            $pokir = $this->pokirService->export($request->user(), $id);
+            return ApiResponse::success($pokir, 'Pokir berhasil diekspor ke SIPD.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    /**
+     * GET /api/v1/pokir/{id}/activities
+     */
+    public function activities(Request $request, int $id): JsonResponse
+    {
+        try {
+            $data = $this->pokirService->activities($request->user(), $id);
+            return ApiResponse::success($data, 'Riwayat aktivitas berhasil dimuat.');
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
 }

@@ -14,19 +14,21 @@ class StorePokirRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'kamus_pokir_id' => [
-                'nullable',
-                'integer',
-                'exists:kamus_pokirs,id',
-            ],
-            'opd_id' => ['nullable', 'integer', 'exists:opds,id'],
-            'dapil_id' => ['nullable', 'integer', 'exists:dapils,id'],
-            'kecamatan_ids' => ['nullable', 'array'],
-            'kecamatan_ids.*' => ['integer', 'exists:kecamatans,id'],
-            'desa_ids' => ['nullable', 'array'],
-            'desa_ids.*' => ['integer', 'exists:desas,id'],
-            'notes' => ['nullable', 'string'],
+            'title'          => ['required', 'string', 'max:255'],
+            'kamus_pokir_id' => ['nullable', 'integer', 'exists:kamus_pokirs,id'],
+            'opd_id'         => ['nullable', 'integer', 'exists:opds,id'],
+            'dapil_id'       => ['nullable', 'integer', 'exists:dapils,id'],
+            'kecamatan_ids'  => ['nullable', 'array'],
+            'kecamatan_ids.*'=> ['integer', 'exists:kecamatans,id'],
+            'desa_ids'       => ['nullable', 'array'],
+            'desa_ids.*'     => ['integer', 'exists:desas,id'],
+            'notes'          => ['nullable', 'string'],
+            'volume'         => ['nullable', 'numeric', 'min:0'],
+            'satuan'         => ['nullable', 'string', 'max:50'],
+            'satuan_custom'  => ['nullable', 'string', 'max:100'],
+            // IDs aspirasi yang langsung dilampirkan saat create
+            'aspirasi_ids'   => ['nullable', 'array'],
+            'aspirasi_ids.*' => ['integer', 'exists:aspirasis,id'],
         ];
     }
 }
