@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Models\Dapil;
 use App\Models\User;
 use Laravel\Passport\Token;
 
@@ -36,22 +37,19 @@ class AuthService
             throw new \Exception('Akun Anda telah dinonaktifkan. Hubungi administrator.', 403);
         }
 
-        // $userData = [
-        //     'name'      => $ssoUser['name'] ?? 'Pengguna',
-        //     'email'     => $ssoUser['email'],
-        //     'avatar'    => $ssoUser['avatar'] ?? null,
-        //     'role'      => $ssoUser['role'],
-        //     'dapil_id'  => $ssoUser['dapil_id'] ?? null,
-        //     'sso_token' => $ssoToken,
-        // ];
+        // dapil_id dari SSO Pusat ADALAH id di sistem SSO Pusat (tabel dapils di sso-setwan),
+        // bukan id di tabel dapils lokal epokir-backend — dua sistem ID yang terpisah.
+        // Kecamatan/Desa lokal mengacu ke dapils.id LOKAL, jadi dapil_id user harus di-resolve
+        // ulang lewat nama Dapil (stabil & sama di kedua sistem), bukan dipercaya mentah-mentah.
+        $namaDapil = $ssoUser['dapil']['nama'] ?? null;
 
         $userData = [
             'name'        => $ssoUser['name'] ?? 'Pengguna',
             'email'       => $ssoUser['email'],
             'avatar'      => $ssoUser['avatar'] ?? null,
             'role'        => $ssoUser['role'] ?? 'dewan',
-            'dapil_id'    => $ssoUser['dapil_id'] ?? null,
-            'dapil_nama'  => $ssoUser['dapil']['nama'] ?? null,
+            'dapil_id'    => $this->resolveLocalDapilId($namaDapil),
+            'dapil_nama'  => $namaDapil,
             'fraksi_id'   => $ssoUser['fraksi_id'] ?? null,
             'fraksi_nama' => $ssoUser['fraksi']['nama'] ?? null,
             'sso_token'   => $ssoToken,
@@ -84,6 +82,21 @@ class AuthService
             'token' => $localToken,
             'user'  => $user,
         ];
+    }
+
+    /**
+     * Cocokkan nama Dapil dari SSO Pusat ke id Dapil lokal (epokir-backend) — dipakai
+     * sebagai FK Kecamatan/Desa/Aspirasi. SSO Pusat & lokal punya id Dapil yang independen,
+     * jadi tidak bisa dipakai langsung; nama Dapil adalah satu-satunya kunci yang stabil
+     * di kedua sistem.
+     */
+    private function resolveLocalDapilId(?string $namaDapil): ?int
+    {
+        if (!$namaDapil) {
+            return null;
+        }
+
+        return Dapil::where('name', $namaDapil)->value('id');
     }
 
     /**
